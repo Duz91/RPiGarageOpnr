@@ -1,12 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Bluetooth Presence Detection</title>
-</head>
-<body>
-    <h1>Bluetooth Presence Detection</h1>
-    <a href="/settings">Settings</a><br><br>
-    <a href="/activate_relay">NOTÖFFNUNG</a>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Status{% endblock %}
+
+{% block content %}
+    <h1>Garagentorsteuerung</h1>
+    
+    <div class="status">
+        <h2>Aktueller Status:</h2>
+        <p>Gerät {{ 'anwesend' if device_present else 'abwesend' }}</p>
+    </div>
+    
+    <div class="controls">
+        <a href="{{ url_for('activate_relay') }}" class="button">Tür jetzt öffnen</a>
+    </div>
+{% endblock %}
