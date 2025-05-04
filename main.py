@@ -2,10 +2,8 @@ import subprocess
 import time
 import json
 import os
-import re
-from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_wtf.csrf import CSRFProtect
 from gpiozero import Button, LED, OutputDevice
+from flask import Flask, render_template, request, redirect, url_for
 import threading
 
 # Konfigurationsdatei
@@ -30,12 +28,7 @@ DEFAULT_CONFIG = {
     "button_pin": 5
 }
 
-# Flask Initialisierung
-app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Autogenerierter Schlüssel
-csrf = CSRFProtect(app)
-
-# Konfigurationshandling
+# Konfiguration laden
 def load_config():
     if not os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'w') as f:
@@ -51,6 +44,7 @@ def save_config(config):
 # Globale Variablen
 config = load_config()
 device_present = False
+app = Flask(__name__)
 
 # GPIO Initialisierung
 led = LED(config['led_pin'])
@@ -61,7 +55,9 @@ button = None
 # Funktionen
 def button_pressed():
     global device_present
+    print("Taster gedrückt!")
     if device_present:
+        print("Aktiviere Relais...")
         relay.on()
         time.sleep(config['relay_close_time'])
         relay.off()
@@ -86,6 +82,7 @@ def beep(times, duration):
         time.sleep(duration)
 
 def blink_led():
+    global device_present, config
     while True:
         if device_present:
             led.blink(on_time=config['presence_led_blink_interval'],
@@ -97,8 +94,12 @@ def blink_led():
 
 def main_loop():
     global device_present, config
+    last_seen = {mac: None for mac in config['mac_addresses']}
+    previous_state = None
+    
     while True:
         current_presence = any(check_device(mac) for mac in config['mac_addresses'])
+        print(f"Scanning... Gefundene Geräte: {current_presence}")
         
         if current_presence != device_present:
             device_present = current_presence
@@ -112,68 +113,42 @@ def main_loop():
 # Flask-Routen
 @app.route('/')
 def index():
-    return render_template('index.html', 
-                         device_present=device_present,
-                         config=config)
+    return render_template('index.html')
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     global config, button
     
     if request.method == 'POST':
-        try:
-            new_config = {
-                "mac_addresses": [m.strip() for m in request.form['mac_addresses'].split(',')],
-                "scan_interval": int(request.form.get('scan_interval', 7)),
-                "absence_interval": int(request.form.get('absence_interval', 15)),
-                "relay_close_time": float(request.form.get('relay_close_time', 0.5)),
-                "presence_beep_duration": float(request.form.get('presence_beep_duration', 0.1)),
-                "presence_beep_count": int(request.form.get('presence_beep_count', 2)),
-                "absence_beep_duration": float(request.form.get('absence_beep_duration', 0.1)),
-                "absence_beep_count": int(request.form.get('absence_beep_count', 2)),
-                "button_bounce_time": float(request.form.get('button_bounce_time', 0.2)),
-                "presence_led_blink_interval": float(request.form.get('presence_led_blink_interval', 0.7)),
-                "absence_led_blink_interval": float(request.form.get('absence_led_blink_interval', 1.2)),
-                "led_pin": int(request.form.get('led_pin', 23)),
-                "relay_pin": int(request.form.get('relay_pin', 26)),
-                "buzzer_pin": int(request.form.get('buzzer_pin', 19)),
-                "button_pin": int(request.form.get('button_pin', 5))
-            }
-        except ValueError as e:
-            flash(f"Ungültige Eingabe: {str(e)}", "error")
-            return redirect(url_for('settings'))
-        
-        # MAC-Adressen validieren
-        mac_pattern = re.compile(r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$')
-        for mac in new_config['mac_addresses']:
-            if not mac_pattern.match(mac):
-                flash(f"Ungültige MAC-Adresse: {mac}", "error")
-                return redirect(url_for('settings'))
+        new_config = {
+            'mac_addresses': request.form['mac_addresses'].split(','),
+            'scan_interval': int(request.form['scan_interval']),
+            'absence_interval': int(request.form['absence_interval']),
+            'relay_close_time': float(request.form['relay_close_time']),
+            'presence_beep_duration': float(request.form['presence_beep_duration']),
+            'presence_beep_count': int(request.form['presence_beep_count']),
+            'absence_beep_duration': float(request.form['absence_beep_duration']),
+            'absence_beep_count': int(request.form['absence_beep_count']),
+            'button_bounce_time': float(request.form['button_bounce_time']),
+            'presence_led_blink_interval': float(request.form['presence_led_blink_interval']),
+            'absence_led_blink_interval': float(request.form['absence_led_blink_interval'])
+        }
         
         save_config(new_config)
-        config = new_config
+        config.update(new_config)
         
         # GPIO neu initialisieren
-        led.close()
-        relay.close()
-        buzzer.close()
-        if button:
-            button.close()
-        
-        led = LED(config['led_pin'])
-        relay = OutputDevice(config['relay_pin'], active_high=False)
-        buzzer = OutputDevice(config['buzzer_pin'], active_high=False)
+        button.close() if button else None
         button = Button(config['button_pin'], 
                       pull_up=True, 
                       bounce_time=config['button_bounce_time'])
         button.when_pressed = button_pressed
         
-        flash("Einstellungen erfolgreich gespeichert!", "success")
         return redirect(url_for('settings'))
     
     return render_template('settings.html',
-                         mac_addresses=", ".join(config['mac_addresses']),
-                         **config)
+                         mac_addresses=",".join(config['mac_addresses']),
+                         **{k: v for k, v in config.items() if k != 'mac_addresses'})
 
 @app.route('/activate_relay')
 def activate_relay():
@@ -183,15 +158,13 @@ def activate_relay():
     return "Relais aktiviert!"
 
 if __name__ == '__main__':
-    # GPIO Initialisierung
+    # Wichtig: use_reloader=False verhindert Doppelausführung
     button = Button(config['button_pin'], 
                   pull_up=True, 
                   bounce_time=config['button_bounce_time'])
     button.when_pressed = button_pressed
     
-    # Threads starten
     threading.Thread(target=main_loop, daemon=True).start()
     threading.Thread(target=blink_led, daemon=True).start()
     
-    # Webserver starten
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)

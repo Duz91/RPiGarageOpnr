@@ -1,87 +1,39 @@
-{% extends "base.html" %}
-
-{% block title %}Einstellungen{% endblock %}
-
-{% block content %}
-    <h1>Systemeinstellungen</h1>
-    
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings</title>
+</head>
+<body>
+    <h1>Settings</h1>
     <form method="post">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        
-        <div class="form-group">
-            <label for="mac_addresses">MAC-Adressen (kommagetrennt):</label>
-            <input type="text" id="mac_addresses" name="mac_addresses" 
-                   value="{{ mac_addresses }}" required>
-        </div>
+        <label for="mac_addresses">MAC Addresses (comma separated):</label><br>
+        <input type="text" id="mac_addresses" name="mac_addresses" value="{{ mac_addresses }}"><br><br>
 
-        <div class="form-group">
-            <label for="scan_interval">Scan-Intervall (Sekunden):</label>
-            <input type="number" id="scan_interval" name="scan_interval" 
-                   value="{{ scan_interval }}" min="1" max="60" required>
-        </div>
+        <label for="scan_interval">Scan Interval (seconds):</label><br>
+        <input type="number" id="scan_interval" name="scan_interval" value="{{ scan_interval }}"><br><br>
 
-        <div class="form-group">
-            <label for="absence_interval">Abwesenheitsintervall (Sekunden):</label>
-            <input type="number" id="absence_interval" name="absence_interval" 
-                   value="{{ absence_interval }}" min="1" max="300" required>
-        </div>
+        <label for="absence_interval">Absence Interval (seconds):</label><br>
+        <input type="number" id="absence_interval" name="absence_interval" value="{{ absence_interval }}"><br><br>
 
-        <div class="form-group">
-            <label for="relay_close_time">Relais-Aktivierungszeit (Sekunden):</label>
-            <input type="number" step="0.1" id="relay_close_time" name="relay_close_time" 
-                   value="{{ relay_close_time }}" min="0.1" max="5" required>
-        </div>
+        <label for="relay_close_time">Relay Close Time (seconds):</label><br>
+        <input type="number" step="0.1" id="relay_close_time" name="relay_close_time" value="{{ relay_close_time }}"><br><br>
 
-        <h2>Akustische Signale</h2>
-        <div class="form-group">
-            <label for="presence_beep_count">Anwesenheitssignal Anzahl:</label>
-            <input type="number" id="presence_beep_count" name="presence_beep_count" 
-                   value="{{ presence_beep_count }}" min="1" max="5" required>
-        </div>
+        <label for="presence_beep_duration">Presence Beep Duration (seconds):</label><br>
+        <input type="number" step="0.1" id="presence_beep_duration" name="presence_beep_duration" value="{{ presence_beep_duration }}"><br><br>
 
-        <div class="form-group">
-            <label for="presence_beep_duration">Anwesenheitssignal Dauer (s):</label>
-            <input type="number" step="0.1" id="presence_beep_duration" name="presence_beep_duration" 
-                   value="{{ presence_beep_duration }}" min="0.1" max="1" required>
-        </div>
+        <label for="presence_beep_count">Presence Beep Count:</label><br>
+        <input type="number" id="presence_beep_count" name="presence_beep_count" value="{{ presence_beep_count }}"><br><br>
 
-        <div class="form-group">
-            <label for="absence_beep_count">Abwesenheitssignal Anzahl:</label>
-            <input type="number" id="absence_beep_count" name="absence_beep_count" 
-                   value="{{ absence_beep_count }}" min="1" max="5" required>
-        </div>
+        <label for="absence_beep_duration">Absence Beep Duration (seconds):</label><br>
+        <input type="number" step="0.1" id="absence_beep_duration" name="absence_beep_duration" value="{{ absence_beep_duration }}"><br><br>
 
-        <div class="form-group">
-            <label for="absence_beep_duration">Abwesenheitssignal Dauer (s):</label>
-            <input type="number" step="0.1" id="absence_beep_duration" name="absence_beep_duration" 
-                   value="{{ absence_beep_duration }}" min="0.1" max="1" required>
-        </div>
+        <label for="absence_beep_count">Absence Beep Count:</label><br>
+        <input type="number" id="absence_beep_count" name="absence_beep_count" value="{{ absence_beep_count }}"><br><br>
 
-        <h2>Hardware-Einstellungen</h2>
-        <div class="form-group">
-            <label for="led_pin">LED-Pin (BCM):</label>
-            <input type="number" id="led_pin" name="led_pin" 
-                   value="{{ led_pin }}" min="1" max="27" required>
-        </div>
-
-        <div class="form-group">
-            <label for="relay_pin">Relais-Pin (BCM):</label>
-            <input type="number" id="relay_pin" name="relay_pin" 
-                   value="{{ relay_pin }}" min="1" max="27" required>
-        </div>
-
-        <div class="form-group">
-            <label for="buzzer_pin">Summer-Pin (BCM):</label>
-            <input type="number" id="buzzer_pin" name="buzzer_pin" 
-                   value="{{ buzzer_pin }}" min="1" max="27" required>
-        </div>
-
-        <div class="form-group">
-            <label for="button_pin">Taster-Pin (BCM):</label>
-            <input type="number" id="button_pin" name="button_pin" 
-                   value="{{ button_pin }}" min="1" max="27" required>
-        </div>
-
-        <input type="submit" value="Einstellungen speichern" class="button">
+        <input type="submit" value="Update Parameters">
     </form>
-{% endblock %}
+    <br>
+    <a href="/">Back to Home</a>
+</body>
+</html>
