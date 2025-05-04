@@ -4,7 +4,8 @@ from gpiozero import Button, LED, OutputDevice
 from flask import Flask, render_template, request, redirect, url_for
 import threading
 
-# GPIO-Pins definieren
+
+# GPIO-Pins definieren!
 BUTTON_PIN = 5
 LED_PIN = 23
 RELAY_PIN = 26
