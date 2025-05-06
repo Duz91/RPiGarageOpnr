@@ -5,6 +5,8 @@ from flask import Flask, render_template, request, redirect, url_for
 import threading
 import json
 
+# Settingfile definieren
+SETTINGS_FILE = "settings.json"
 
 # GPIO-Pins definieren!
 BUTTON_PIN = 5
@@ -34,6 +36,52 @@ led = LED(LED_PIN)                        # LED-Steuerung
 relay = OutputDevice(RELAY_PIN, active_high=False)  # Relais invertiert (LOW aktiviert)
 buzzer = OutputDevice(BUZZER_PIN, active_high=False)  # Buzzer invertiert (LOW aktiviert)
 button = None
+
+
+# Funktion zum auslesen der Settings im JSON File
+def load_settings():
+    global mac_addresses, scan_interval, absence_interval, relay_close_time
+    global presence_beep_duration, presence_beep_count, absence_beep_duration, absence_beep_count
+    global button_bounce_time, presence_led_blink_interval, absence_led_blink_interval
+
+    try:
+        with open(SETTINGS_FILE, 'r') as file:
+            settings = json.load(file)
+            mac_addresses = settings.get('mac_addresses', mac_addresses)
+            scan_interval = settings.get('scan_interval', scan_interval)
+            absence_interval = settings.get('absence_interval', absence_interval)
+            relay_close_time = settings.get('relay_close_time', relay_close_time)
+            presence_beep_duration = settings.get('presence_beep_duration', presence_beep_duration)
+            presence_beep_count = settings.get('presence_beep_count', presence_beep_count)
+            absence_beep_duration = settings.get('absence_beep_duration', absence_beep_duration)
+            absence_beep_count = settings.get('absence_beep_count', absence_beep_count)
+            button_bounce_time = settings.get('button_bounce_time', button_bounce_time)
+            presence_led_blink_interval = settings.get('presence_led_blink_interval', presence_led_blink_interval)
+            absence_led_blink_interval = settings.get('absence_led_blink_interval', absence_led_blink_interval)
+    except FileNotFoundError:
+        print("Settings file not found. Using default settings.")
+    except json.JSONDecodeError:
+        print("Error reading settings file. Using default settings.")
+
+
+# Funktion zum auslesen der Settings im JSON File
+def save_settings():
+    settings = {
+        'mac_addresses': mac_addresses,
+        'scan_interval': scan_interval,
+        'absence_interval': absence_interval,
+        'relay_close_time': relay_close_time,
+        'presence_beep_duration': presence_beep_duration,
+        'presence_beep_count': presence_beep_count,
+        'absence_beep_duration': absence_beep_duration,
+        'absence_beep_count': absence_beep_count,
+        'button_bounce_time': button_bounce_time,
+        'presence_led_blink_interval': presence_led_blink_interval,
+        'absence_led_blink_interval': absence_led_blink_interval
+    }
+
+    with open(SETTINGS_FILE, 'w') as file:
+        json.dump(settings, file, indent=4)
 
 # Funktion zum direkten Abfragen eines Geräts mit hcitool name
 def check_device_name(mac_address):
@@ -142,12 +190,14 @@ def settings():
         presence_led_blink_interval = float(request.form['presence_led_blink_interval'])
         absence_led_blink_interval = float(request.form['absence_led_blink_interval'])
 
-        # Button neu initialisieren mit aktualisierter Entprellzeit
+        # Reinitialize the button with updated debounce time
         global button
-        button.close()  # Alten Button schließen (falls vorhanden)
+        button.close()  # Close the old button (if any)
         button = Button(BUTTON_PIN, pull_up=True, bounce_time=button_bounce_time)
         button.when_pressed = button_pressed
-        
+
+        save_settings()  # Save settings to the JSON file
+
         return redirect(url_for('settings'))
     
     return render_template('settings.html', 
@@ -172,12 +222,14 @@ def activate_relay():
 
 if __name__ == '__main__':
     try:
-        button = Button(BUTTON_PIN, pull_up=True, bounce_time=button_bounce_time)  # Button initialisieren mit Entprellzeit
-        button.when_pressed = button_pressed                                     # Button-Event registrieren
-        
-        threading.Thread(target=main).start()       # Hauptprogramm in separatem Thread starten
-        threading.Thread(target=blink_led).start()  # LED-Blinken in separatem Thread starten
-        app.run(host='0.0.0.0', port=5000)          # Flask-Webserver starten
+        load_settings()
+        button = Button(BUTTON_PIN, pull_up=True, bounce_time=button_bounce_time)  # Initialize button with debounce time
+        button.when_pressed = button_pressed  # Register button event
+
+        threading.Thread(target=main).start()       # Start the main program in a separate thread
+        threading.Thread(target=blink_led).start()  # Start LED blinking in a separate thread
+        app.run(host='0.0.0.0', port=5000)          # Start the Flask web server
     finally:
+        save_settings()
         led.off()
 
